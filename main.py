@@ -1,13 +1,25 @@
+import string
+import uuid
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
-# from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional
+import random
 
 # create a FastAPI instance
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 # configure the database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./library.db"
@@ -22,8 +34,11 @@ class Book(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     author = Column(String)
+    coverUrl = Column(String)
+    language = Column(String)
+    publisher = Column(String)
+    published_date = Column(String)
     isbn = Column(String, unique=True, index=True)
-    published_year = Column(Integer)
     description = Column(String)
     available = Column(Integer, default=1)  # 1 for available, 0 for borrowed
     created_at = Column(DateTime, default=datetime.now)
@@ -35,9 +50,12 @@ Base.metadata.create_all(bind=engine)
 class BookBase(BaseModel):
     title: str
     author: str
-    isbn: str
-    published_year: int
-    description: Optional[str] = None
+    coverUrl: Optional[str] = "https://via"
+    language: Optional[str] = "English"
+    publisher: Optional[str] = "Unknown"
+    published_date: Optional[str]= "1900-01-01"
+    isbn: Optional[str] = "9780000000000"
+    description: Optional[str] = "No description available"
 
 class BookCreate(BookBase):
     pass
@@ -56,6 +74,26 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# random sample data, query: random?isbn=9780062315007, generate a random book with this ISBN
+@app.get("/random")
+def random_book(isbn: str):
+    # generate a random book with isbn
+    random.seed(isbn)
+    # genera a uuid for the book
+    r_uuid = uuid.uuid4()
+    return {
+        "title": ''.join(random.choices(string.ascii_letters + string.digits, k=10)),
+        "author":   ''.join(random.choices(string.ascii_letters + string.digits, k=5)),
+        "coverUrl": "https://via.placeholder.com/150",
+        "language": "English",
+        "publisher": "HarperCollins",
+        "published_date": "1988-01-01",
+        "isbn": isbn,
+        "description": r_uuid,
+        "available": 1
+    }
+
 
 # API endpoints
 @app.post("/books/", response_model=BookResponse)
