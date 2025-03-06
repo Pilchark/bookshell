@@ -75,6 +75,11 @@ def get_db():
     finally:
         db.close()
 
+# Home route
+@app.get("/")
+def home():
+    return {"message": "Welcome to the Bookshell API"}
+
 # random sample data, query: random?isbn=9780062315007, generate a random book with this ISBN
 @app.get("/random")
 def random_book(isbn: str):
